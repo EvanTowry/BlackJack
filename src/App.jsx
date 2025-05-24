@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const CARD_VALUES = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
@@ -47,12 +49,12 @@ function getAction(player, dealerUpcard, canDouble, canSplit) {
   return "Hit (dealer strong)";
 }
 
-export default function App() {
+export default function BlackjackTrainer() {
   const [player, setPlayer] = useState([]);
   const [dealer, setDealer] = useState([]);
   const [count, setCount] = useState(0);
-  const [bankroll, setBankroll] = useState(1000);
-  const [bet, setBet] = useState(10);
+  const [bankroll, setBankroll] = useState(null);
+  const [bet, setBet] = useState(0);
   const [log, setLog] = useState([]);
 
   const handleCardInput = (card, who) => {
@@ -69,11 +71,13 @@ export default function App() {
   };
 
   const suggestBet = () => {
-    const trueCount = count / 6;
-    if (trueCount >= 5) return 100;
-    if (trueCount >= 3) return 50;
-    if (trueCount >= 1) return 20;
-    return 10;
+    if (!bankroll) return 0;
+    const trueCount = count / 6; // assuming 6 decks
+    const baseUnit = bankroll / 100;
+    if (trueCount >= 5) return Math.floor(baseUnit * 10);
+    if (trueCount >= 3) return Math.floor(baseUnit * 5);
+    if (trueCount >= 1) return Math.floor(baseUnit * 2);
+    return Math.floor(baseUnit);
   };
 
   const resolve = () => {
@@ -93,39 +97,75 @@ export default function App() {
     setLog(prev => [...prev, { player: [...player], dealer: [...dealer], result, bet, count }]);
   };
 
+  if (bankroll === null) {
+    return (
+      <div className="p-4 max-w-xl mx-auto">
+        <h1 className="text-2xl font-bold mb-4">Enter Starting Bankroll</h1>
+        <input
+          type="number"
+          className="border p-2 rounded w-full"
+          placeholder="Enter bankroll..."
+          onChange={(e) => {
+            const value = parseInt(e.target.value);
+            if (!isNaN(value)) {
+              setBankroll(value);
+              setBet(suggestBet());
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ padding: 20, fontFamily: 'Arial' }}>
-      <h1>Blackjack Trainer</h1>
-      <div>Running Count: {count}</div>
-      <div>Suggested Bet: {suggestBet()} units</div>
-      <div>Bankroll: ${bankroll}</div>
-      <div style={{ marginTop: 20 }}>
-        <h2>Dealer Hand</h2>
-        <div>{dealer.join(", ")}</div>
-        {CARD_VALUES.map(val => (
-          <button key={val} onClick={() => handleCardInput(val, "dealer")} style={{ margin: 2 }}>{val}</button>
-        ))}
+    <div className="p-4 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Rebet-Style Blackjack Trainer</h1>
+      <Card className="mb-4">
+        <CardContent className="space-y-2 p-4">
+          <div>Running Count: {count}</div>
+          <div>Suggested Bet: {bet} units</div>
+          <div>Bankroll: ${bankroll}</div>
+        </CardContent>
+      </Card>
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <h2 className="font-semibold">Dealer Hand</h2>
+            <div>{dealer.join(", ")}</div>
+            <div className="flex flex-wrap gap-2">
+              {CARD_VALUES.map(val => (
+                <Button key={val} onClick={() => handleCardInput(val, "dealer")}>{val}</Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <h2 className="font-semibold">Player Hand</h2>
+            <div>{player.join(", ")}</div>
+            <div className="flex flex-wrap gap-2">
+              {CARD_VALUES.map(val => (
+                <Button key={val} onClick={() => handleCardInput(val, "player")}>{val}</Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-      <div style={{ marginTop: 20 }}>
-        <h2>Player Hand</h2>
-        <div>{player.join(", ")}</div>
-        {CARD_VALUES.map(val => (
-          <button key={val} onClick={() => handleCardInput(val, "player")} style={{ margin: 2 }}>{val}</button>
-        ))}
+      <div className="mt-4">
+        <div className="font-medium">Advice: {player.length > 0 && dealer.length > 0 ? getAction(player, dealer[0], true, true) : "Input both hands"}</div>
+        <div className="mt-2 flex gap-2">
+          <Button onClick={resolve}>Resolve</Button>
+          <Button onClick={reset} variant="outline">Reset Hand</Button>
+        </div>
       </div>
-      <div style={{ marginTop: 20 }}>
-        <strong>Advice: </strong>{player.length > 0 && dealer.length > 0 ? getAction(player, dealer[0], true, true) : "Input both hands"}
-      </div>
-      <div style={{ marginTop: 10 }}>
-        <button onClick={resolve}>Resolve</button>
-        <button onClick={reset} style={{ marginLeft: 10 }}>Reset Hand</button>
-      </div>
-      <div style={{ marginTop: 20 }}>
-        <h2>Hand History</h2>
-        <ul>
+      <div className="mt-6">
+        <h2 className="text-lg font-bold mb-2">Hand History</h2>
+        <ul className="space-y-1 text-sm">
           {log.map((entry, idx) => (
-            <li key={idx}>
-              Result: {entry.result}, Bet: ${entry.bet}, Count: {entry.count}, Player: {entry.player.join(", ")}, Dealer: {entry.dealer.join(", ")}
+            <li key={idx} className="border rounded p-2 bg-gray-50">
+              <div><strong>Result:</strong> {entry.result}</div>
+              <div><strong>Bet:</strong> ${entry.bet} | <strong>Count:</strong> {entry.count}</div>
+              <div><strong>Player:</strong> {entry.player.join(", ")} | <strong>Dealer:</strong> {entry.dealer.join(", ")}</div>
             </li>
           ))}
         </ul>
